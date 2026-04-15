@@ -1,17 +1,22 @@
 provider "aws" {
-  region = "ap-north-1"
+  region = "us-east-1"
 }
 
-# S3 Bucket
+# -----------------------------
+# S3 Bucket for Website
+# -----------------------------
 resource "aws_s3_bucket" "website_bucket" {
   bucket = "medlife-static-site-001"
 
   tags = {
-    Name = "Medlife Website"
+    Project     = "medlife-master"
+    Environment = "dev"
   }
 }
 
-# Enable Static Website Hosting
+# -----------------------------
+# Static Website Hosting
+# -----------------------------
 resource "aws_s3_bucket_website_configuration" "website_config" {
   bucket = aws_s3_bucket.website_bucket.id
 
@@ -20,7 +25,9 @@ resource "aws_s3_bucket_website_configuration" "website_config" {
   }
 }
 
+# -----------------------------
 # Public Access Settings
+# -----------------------------
 resource "aws_s3_bucket_public_access_block" "public_access" {
   bucket = aws_s3_bucket.website_bucket.id
 
@@ -30,7 +37,9 @@ resource "aws_s3_bucket_public_access_block" "public_access" {
   restrict_public_buckets = false
 }
 
-# Bucket Policy (Allow Public Read)
+# -----------------------------
+# Bucket Policy (Public Read)
+# -----------------------------
 resource "aws_s3_bucket_policy" "bucket_policy" {
   bucket = aws_s3_bucket.website_bucket.id
 
@@ -50,7 +59,9 @@ resource "aws_s3_bucket_policy" "bucket_policy" {
   })
 }
 
-# Upload Files
+# -----------------------------
+# Upload Website Files
+# -----------------------------
 resource "aws_s3_object" "website_files" {
   for_each = fileset("${path.module}/medlife-master", "**/*")
 
@@ -58,4 +69,15 @@ resource "aws_s3_object" "website_files" {
   key    = each.value
   source = "${path.module}/medlife-master/${each.value}"
   etag   = filemd5("${path.module}/medlife-master/${each.value}")
+}
+
+# -----------------------------
+# Backend (Remote State in S3)
+# -----------------------------
+terraform {
+  backend "s3" {
+    bucket = "medlife-terraform-state-001"   # create manually
+    key    = "medlife/terraform.tfstate"
+    region = "us-east-1"
+  }
 }
